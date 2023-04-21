@@ -67,7 +67,7 @@ public class PokerLogic
         return hand;
     }
     
-    // 获取获胜者编号
+    // 获取胜败信息
     private int GetWinner(UInt64 a, UInt64 b) {
         // 平
         if (a == b)
@@ -90,21 +90,21 @@ public class PokerLogic
         return 0;
     }
     
-    // 比较两张手牌、支持任意数量手牌及任意数量赖子
+    // 比较两张手牌
     public int Compare(string strA, string strB)
     {
         var playerA = AnalyzeHandStr(strA).GetMaxHands();
         var playerB = AnalyzeHandStr(strB).GetMaxHands();
 
-        // 比较最大牌型
+        // 比较最大牌型，胜者为较大一方
         var winner = GetWinner((UInt64)playerA.MaxCase, (UInt64)playerB.MaxCase);
         Debug.Log($"玩家牌型:{playerA.MaxCase.ToString()}，电脑牌型：{playerB.MaxCase.ToString()}");
-        // 如果牌型不同，直接返回结果
+        // 如果牌型相同，返回结果
         if  (winner != 0)
         {
             return winner;
         }
-        // 如果牌型相同，则需要比较点数
+        // 如果牌型相同，则需要做额外处理
         // 如果牌型是顺子或者同花顺，会产生特例A2345，它是这类牌型的最小值，手动标记为0
         var scoreA = playerA.MaxHandData == (UInt64) CardEnum.A2345 ? 0 : playerA.MaxHandData;
         var scoreB = playerB.MaxHandData == (UInt64) CardEnum.A2345 ? 0 : playerB.MaxHandData;
@@ -117,8 +117,10 @@ public class PokerLogic
 public class Hand
 {
     public string HandStr;   // 记录原始手牌字符串
-    public UInt64[] Suits;   // 记录手牌中各花色对应的牌，数组索引0-3表示四种花色；每个花色由13个有效bit组成。
-    public UInt64[] Faces;   // 记录手牌中某个点数的出现次数，数组索引0-3表示某个点数出现1-4次；每个出现频率由13个有效bit组成。
+    public UInt64[] Suits;   // 记录手牌中各花色对应的牌，数组索引0-3表示四种花色；每个花色由13个bit组成（对应13张牌，0为有对应点数牌，1为没有）。
+                             // 如果我的手牌只有一张，是红桃A 那么有Suits[2] = 1000000000000
+    public UInt64[] Faces;   // 记录手牌中某个点数的出现次数，数组索引0-3表示某个点数出现1-4次；每个出现次数对应13个bit（对应13张牌，0为有对应点数牌，1为没有）。
+                             // 如果我有两张A，那么有Faces[1] = 1000000000000
     
     // 获取最大手牌
     public MaxHand GetMaxHands()
@@ -141,8 +143,9 @@ public class Hand
 
 public class MaxHand
 {
-    public CaseEnum MaxCase;      // 记录最大牌型
-    public UInt64 MaxHandData;  // 记录最大五张牌和得分
+    public CaseEnum MaxCase;    // 记录最大牌型
+    public UInt64 MaxHandData;  // 记录最大牌型对应的五张牌，三个A两个K可表示为
+                                // 1000000000000 1000000000000 1100000000000 0100000000000（加空格是为了方便看懂，实际上是连起来的）
     public bool FlushFlag;      // 记录是否存在5张同花牌型
     public int FlushSuit;       // 5张同花的花色编号
     
@@ -305,13 +308,12 @@ public enum CaseEnum
     ThreeOfAKind  = 3, // 三条
     TwoPair       = 2, // 两对
     OnePair       = 1, // 一对
-    HighCard      = 0 // 散牌
+    HighCard      = 0  // 高牌
 }
 
 public enum CardEnum
 {
     A2345 = 4111, // 1000000001111
     AKQJT = 7936, // 1111100000000
-    A     = 4096, // 1000000000000
 }
     

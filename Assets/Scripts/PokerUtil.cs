@@ -5,7 +5,13 @@ public static class PokerUtil
 {
     // 统计二进制中1的个数（最大有效位数为16位）
     public static UInt64 CountOne(UInt64 a) {
-        // 这里用了分治思想：先将相邻两个比特位１的个数相加，再将相邻四各比特位值相加...
+        // 传统方式：循环最大有效位数，每次判断 (a >> 1) & 1 == 1
+        // 采用分治的思想将（临位相加后递归），可大幅降低计算次数
+        // 1   1   0   1   1   0   0   1
+        //   2       1       1       1
+        //       3               2
+        //               5
+        
         a = ((a & 0xAAAA) >> 1) + (a & 0x5555); // 1010101010101010  0101010101010101
         a = ((a & 0xCCCC) >> 2) + (a & 0x3333); // 1100110011001100  0011001100110011
         a = ((a & 0xF0F0) >> 4) + (a & 0x0F0F); // 1111000011110000  0000111100001111
@@ -13,7 +19,9 @@ public static class PokerUtil
         return a;
     }
     
-    // 将数值左移后累加 func(100,2) 100 -> 100,100  func(100,3) 100 -> 100,100,100
+    // 将数值左移后累加 func(100,2) 0000000000100 -> 0000000000100,0000000000100
+    // func(100,3) 100 -> 0000000000100,0000000000100,0000000000100
+    // 在这里用作复制同点数卡牌
     public static UInt64 LeftMoveAndAdd(UInt64 data, int moveCount)
     {
         UInt64 result = 0;
@@ -32,7 +40,7 @@ public static class PokerUtil
         } else
         {
             deleteOneNum--;
-            // 把最后一位1变成0
+            // data & (data - 1)实现最后一位1变成0
             return DeleteLastOne(data & (data - 1), deleteOneNum);
         }
     }
@@ -43,13 +51,13 @@ public static class PokerUtil
         while (data > 0)
         {
             result = data;
-            // 把最后一位1变成0
+            // data & (data - 1)实现最后一位1变成0
             data = data & (data - 1);
         }
         return result;
     }
     
-    // 查找序列中可能存在的顺子，并返回牌面最大的一个
+    // 查找序列中可能存在的顺子，并返回牌面最大的一组
     // 从最大顺子"AKQJT"开始依次与牌面做匹配
     // 假设牌面cardface是	0000011011111    0000011011111    		 0000011011111
     // 用模板cardMold匹配 1111100000000 -> 0111110000000 -> ... -> 0000000011111
